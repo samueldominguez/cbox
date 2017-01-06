@@ -27,7 +27,7 @@
 ;; Usage:
 ;;
 ;; Invoke cbox-trigger, to start typing your
-;; comment block and type it again to insert
+;; comment block and type C-c C-c to insert
 ;; the text into the original buffer at the
 ;; relative point (marker) in which you left
 
@@ -54,7 +54,7 @@
 ;; 4.  Open temporary buffer
 ;; 5.  Major mode is set to fundamental and we set auto-fill minor mode
 ;; 6.  User types the comment text
-;; 7.  User types keybinding mapped to cbox-trigger / invokes cbox-trigger
+;; 7.  User types C-c C-c / invokes cbox-trigger
 ;; 8.  Parse all text in buffer to add necessary characters to box it in comments
 ;; 9.  Copy it to previously stored marker in original buffer
 ;; 10. Kill temporary buffer
@@ -112,7 +112,8 @@ form in the original buffer where cbox-trigger was initially invoked."
 	(other-window 1)
 	(setq cbox-comment-buffer (generate-new-buffer cbox-comment-buffer-name))
 	(switch-to-buffer cbox-comment-buffer)
-	(auto-fill-mode))
+	(auto-fill-mode)
+	(local-set-key "\C-c\C-c" 'cbox-trigger))
     (progn
       (setq cbox-comment-buffer-lines (split-string (buffer-string) "\n"))
       (setq cbox-comment-buffer-max-line-length (+ 2 (cbox-determine-max-line)))
