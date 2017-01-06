@@ -9,6 +9,24 @@
 ;; Created: 05 Jan 2017
 ;; URL: https://github.com/samueldominguez/cbox
 
+;;
+;; Example configuration: (~/.emacs config):
+;;
+;; 1. Make sure cbox.el somewhere in your load
+;;    path, it will load automatically like any
+;;    other .el file in your load path.
+;;
+;; 2. Map cbox-trigger to your prefered
+;;    keybinding e.g. :
+;;    (global-set-key (kbd "C-c /") 'cbox-trigger)
+;;
+;; Usage:
+;;
+;; Invoke cbox-trigger, to start typing your
+;; comment block and type it again to insert
+;; the text into the original buffer at the
+;; relative point (marker) in which you left
+
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
 ;; published by the Free Software Foundation; either version 3, or
@@ -26,17 +44,19 @@
 
 ;; cbox operation:
 ;; Steps:
-;; 1.  User types keybinding 'C-c /'
-;; 2.  We save current position (via marker?)
+;; 1.  User types keybinding mapped to cbox-trigger / invokes cbox-trigger
+;; 2.  We save current position via marker
 ;; 3.  Split window vertically
 ;; 4.  Open temporary buffer
-;; 5.  Set mode to fundamental and autofill
-;; 6.  User types whatever
-;; 7.  User types keybinding 'C-c /'
+;; 5.  Major mode is set to fundamental and we set auto-fill minor mode
+;; 6.  User types the comment text
+;; 7.  User types keybinding mapped to cbox-trigger / invokes cbox-trigger
 ;; 8.  Parse all text in buffer to add necessary characters to box it in comments
 ;; 9.  Copy it to previously stored marker in original buffer
-;; 10. Close temporary buffer
-;; 11. Return to previous window state / just close the window (delete-window) (bound to C-x 0)
+;; 10. Kill temporary buffer
+;; 11. Kill window which held temporary buffer
+;; 12. Go back to the buffer which invoked cbox-trigger originally
+;; 13. Set mark to the next line of the last comment box line
 
 ;;    Default boxing style:
 
@@ -58,6 +78,9 @@
 (defvar cbox-comment-buffer nil
   "Contains the buffer used to write the comments")
 
+(defvar cbox-source-buffer nil
+  "Contains the buffer where cbox was called from")
+
 (defvar cbox-comment-buffer-lines nil
   "Contains all the text lines in a list which make up cbox-comment-buffer,
 this is created when the user finishes typing their comment and re-invoke
@@ -66,7 +89,11 @@ cbox-trigger")
 (defvar cbox-comment-buffer-max-line-length nil
   "Contains the number of characters of the longest line in cbox-comment-buffer")
 
+(defvar cbox-return-marker nil
+  "Contains the marker to return to when we are done with everything")
+
 (setq cbox-insert-marker (make-marker))
+(setq cbox-return-marker (make-marker))
 
 (defun cbox-trigger ()
   "Main function of cbox, it opens a buffer in text mode with auto-fill minor mode in a vertically
@@ -76,6 +103,7 @@ form in the original buffer where cbox-trigger was initially invoked."
   (if (eq (buffer-live-p cbox-comment-buffer) nil)
       (progn
 	(set-marker cbox-insert-marker (point))
+	(setq cbox-source-buffer (current-buffer))
 	(split-window-right)
 	(other-window 1)
 	(setq cbox-comment-buffer (generate-new-buffer cbox-comment-buffer-name))
@@ -83,9 +111,11 @@ form in the original buffer where cbox-trigger was initially invoked."
 	(auto-fill-mode))
     (progn
       (setq cbox-comment-buffer-lines (split-string (buffer-string) "\n"))
-      (setq cbox-comment-buffer-max-line-length (cbox-determine-max-line))
+      (setq cbox-comment-buffer-max-line-length (+ 2 (cbox-determine-max-line)))
+      (cbox-insert-comment)
       (kill-buffer cbox-comment-buffer)
-      (delete-window))))
+      (delete-window)
+      (goto-char cbox-return-marker))))
 
 (defun cbox-determine-max-line ()
   "Sets cbox-comment-buffer-max-line-length to the longest line in cbox-comment-buffer"
@@ -93,6 +123,17 @@ form in the original buffer where cbox-trigger was initially invoked."
     (dolist (el cbox-comment-buffer-lines max)
       (when (> (length el) max)
 	(setq max (length el))))))
-   
-;; for debugging purposes:
-(global-set-key (kbd "C-c /") 'cbox-trigger)
+
+(defun cbox-insert-comment ()
+  "Puts the cbox edit buffer contents into the original source buffer in
+comment format"
+  (switch-to-buffer cbox-source-buffer)
+  (goto-char cbox-insert-marker)
+  (insert (concat "/*" (make-string cbox-comment-buffer-max-line-length ?=) "*\n"))
+  (dolist (line cbox-comment-buffer-lines)
+    (progn
+      (when (eq line "") (setq line "\n"))
+      (insert (concat " | " line (make-string (- (- cbox-comment-buffer-max-line-length 2) (length line)) ? ) " |\n"))))
+  (insert (concat " *" (make-string cbox-comment-buffer-max-line-length ?=) "*/\n"))
+  (set-marker cbox-return-marker (point))
+  (switch-to-buffer cbox-comment-buffer))
