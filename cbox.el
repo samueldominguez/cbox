@@ -16,7 +16,11 @@
 ;;    path, it will load automatically like any
 ;;    other .el file in your load path.
 ;;
-;; 2. Map cbox-trigger to your prefered
+;; 2. Use autoload (or any other method) to make
+;;    cbox visible:
+;;    (autoload 'cbox-trigger "cbox" "Comment blocks editing" t)
+;;
+;; 3. Map cbox-trigger to your prefered
 ;;    keybinding e.g. :
 ;;    (global-set-key (kbd "C-c /") 'cbox-trigger)
 ;;
