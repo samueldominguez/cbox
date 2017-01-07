@@ -29,7 +29,10 @@
 ;; Invoke cbox-trigger, to start typing your
 ;; comment block and type C-c C-c to insert
 ;; the text into the original buffer at the
-;; relative point (marker) in which you left
+;; relative point (marker) in which you left.
+;;
+;; You can type C-c C-k to cancel.
+;;
 
 ;; This program is free software; you can redistribute it and/or
 ;; modify it under the terms of the GNU General Public License as
@@ -54,7 +57,7 @@
 ;; 4.  Open temporary buffer
 ;; 5.  Major mode is set to fundamental and we set auto-fill minor mode
 ;; 6.  User types the comment text
-;; 7.  User types C-c C-c / invokes cbox-trigger
+;; 7.  User types C-c C-c / invokes cbox-trigger or C-c C-k and goto step 10
 ;; 8.  Parse all text in buffer to add necessary characters to box it in comments
 ;; 9.  Copy it to previously stored marker in original buffer
 ;; 10. Kill temporary buffer
@@ -113,7 +116,8 @@ form in the original buffer where cbox-trigger was initially invoked."
 	(setq cbox-comment-buffer (generate-new-buffer cbox-comment-buffer-name))
 	(switch-to-buffer cbox-comment-buffer)
 	(auto-fill-mode)
-	(local-set-key "\C-c\C-c" 'cbox-trigger))
+	(local-set-key "\C-c\C-c" 'cbox-trigger)
+	(local-set-key "\C-c\C-k" 'cbox-abort))
     (progn
       (setq cbox-comment-buffer-lines (split-string (buffer-string) "\n"))
       (setq cbox-comment-buffer-max-line-length (+ 2 (cbox-determine-max-line)))
@@ -121,6 +125,12 @@ form in the original buffer where cbox-trigger was initially invoked."
       (kill-buffer cbox-comment-buffer)
       (delete-window)
       (goto-char cbox-return-marker))))
+
+(defun cbox-abort ()
+  "Invoked by C-c C-k, buffer local. Aborts inserting comment block."
+  (interactive)
+  (kill-buffer cbox-comment-buffer)
+  (delete-window))
 
 (defun cbox-determine-max-line ()
   "Sets cbox-comment-buffer-max-line-length to the longest line in cbox-comment-buffer"
