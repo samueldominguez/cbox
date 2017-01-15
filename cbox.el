@@ -152,3 +152,5 @@ comment format"
   (insert (concat " *" (make-string cbox-comment-buffer-max-line-length ?=) "*/\n"))
   (set-marker cbox-return-marker (point))
   (switch-to-buffer cbox-comment-buffer))
+
+;;; cbox.el ends here
