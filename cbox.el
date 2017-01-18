@@ -99,6 +99,18 @@ cbox-trigger")
 (defvar cbox-return-marker nil
   "Contains the marker to return to when we are done with everything")
 
+(defvar cbox-edit-existing 'nil
+  "Determines whether we are modifying an existing comment or if we
+are creating a new comment")
+
+(defvar cbox-original-text nil
+  "If editing an existing comment, this holds the original copy which will be
+further proceesed to place in the temporary buffer and in case the user aborts
+the operation we can put back exactly what we got in the first place")
+
+(defvar cbox-original-comment nil
+  "Holds the processed text inside cbox-original-text")
+
 (setq cbox-insert-marker (make-marker))
 (setq cbox-return-marker (make-marker))
 
@@ -110,6 +122,11 @@ form in the original buffer where cbox-trigger was initially invoked."
   (if (eq (buffer-live-p cbox-comment-buffer) nil)
       (progn
 	(set-marker cbox-insert-marker (point))
+	(if (cbox-is-on-comment)
+	    (progn
+	      (setq cbox-edit-existing t)
+	      (cbox-extract-text))
+	  (setq cbox-editing-existing nil))
 	(setq cbox-source-buffer (current-buffer))
 	(split-window-right)
 	(other-window 1)
@@ -152,5 +169,19 @@ comment format"
   (insert (concat " *" (make-string cbox-comment-buffer-max-line-length ?=) "*/\n"))
   (set-marker cbox-return-marker (point))
   (switch-to-buffer cbox-comment-buffer))
+
+(defun cbox-is-on-comment ()
+  "Returns t if we are in a comment or nil if we are not. If we are
+we set the cbox-edit-comment to the positions of start/finish so we can
+later extract the text and redo the comment"
+  (or (nth 4 (syntax-ppss))
+      (memq (get-text-property (point) 'face)
+	    '(font-lock-comment-face font-lock-comment-delimiter-face))))
+
+(defun cbox-extract-text ()
+  "Scans area around point to copy the entire comment that the point is on,
+it stores it in cbox-original-text"
+  
+  )
 
 ;;; cbox.el ends here
