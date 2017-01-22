@@ -99,16 +99,20 @@ cbox-trigger")
 (defvar cbox-return-marker nil
   "Contains the marker to return to when we are done with everything")
 
-(defvar cbox-edit-existing 'nil
+(defvar cbox-editing-existing nil
   "Determines whether we are modifying an existing comment or if we
 are creating a new comment")
 
-(defvar cbox-original-text nil
+(defvar cbox-original-comment nil
   "If editing an existing comment, this holds the original copy which will be
 further proceesed to place in the temporary buffer and in case the user aborts
 the operation we can put back exactly what we got in the first place")
 
-(defvar cbox-original-comment nil
+(defvar cbox-original-comment-points nil
+  "If editing an existing comment this holds the character counts that mark the are
+the original comment is defined in")
+
+(defvar cbox-original-text nil
   "Holds the processed text inside cbox-original-text")
 
 (setq cbox-insert-marker (make-marker))
@@ -124,7 +128,8 @@ form in the original buffer where cbox-trigger was initially invoked."
 	(set-marker cbox-insert-marker (point))
 	(if (cbox-is-on-comment)
 	    (progn
-	      (setq cbox-edit-existing t)
+	      (setq cbox-editing-existing t)
+	      (cbox-extract-comment)
 	      (cbox-extract-text))
 	  (setq cbox-editing-existing nil))
 	(setq cbox-source-buffer (current-buffer))
@@ -134,10 +139,15 @@ form in the original buffer where cbox-trigger was initially invoked."
 	(switch-to-buffer cbox-comment-buffer)
 	(auto-fill-mode)
 	(local-set-key "\C-c\C-c" 'cbox-trigger)
-	(local-set-key "\C-c\C-k" 'cbox-abort))
+	(local-set-key "\C-c\C-k" 'cbox-abort)
+	(when cbox-editing-existing
+	    (cbox-insert-original-text)))
     (progn
       (setq cbox-comment-buffer-lines (split-string (buffer-string) "\n"))
       (setq cbox-comment-buffer-max-line-length (+ 2 (cbox-determine-max-line)))
+      (switch-to-buffer cbox-source-buffer)
+      (when cbox-editing-existing
+	(cbox-delete-original-comment))
       (cbox-insert-comment)
       (kill-buffer cbox-comment-buffer)
       (delete-window)
@@ -159,8 +169,8 @@ form in the original buffer where cbox-trigger was initially invoked."
 (defun cbox-insert-comment ()
   "Puts the cbox edit buffer contents into the original source buffer in
 comment format"
-  (switch-to-buffer cbox-source-buffer)
-  (goto-char cbox-insert-marker)
+  (unless cbox-editing-existing
+    (goto-char cbox-insert-marker))
   (insert (concat "/*" (make-string cbox-comment-buffer-max-line-length ?=) "*\n"))
   (dolist (line cbox-comment-buffer-lines)
     (progn
@@ -178,10 +188,47 @@ later extract the text and redo the comment"
       (memq (get-text-property (point) 'face)
 	    '(font-lock-comment-face font-lock-comment-delimiter-face))))
 
-(defun cbox-extract-text ()
+(defun cbox-extract-comment ()
   "Scans area around point to copy the entire comment that the point is on,
-it stores it in cbox-original-text"
-  
-  )
+it stores it in cbox-original-comment"
+  (let (line (start -1) (end -1))
+    (loop do
+	  (setq line (thing-at-point 'line t))
+	  (when (string-match-p (regexp-quote "/*") line)
+	    (progn
+	      (beginning-of-line)
+	      (setq start (point))
+	      (return)))
+	  while (= 0 (forward-line -1)))
+    (goto-char cbox-insert-marker)
+    (loop do
+	  (setq line (thing-at-point 'line t))
+	  (when (string-match-p (regexp-quote "*/") line)
+	    (progn
+	      (end-of-line)
+	      (setq end (point))
+	      (return)))
+	  while (= 0 (forward-line 1)))
+    (goto-char cbox-insert-marker)
+    (setq cbox-original-comment (buffer-substring-no-properties start end))
+    (setq cbox-original-comment-points (list start end))))
+
+(defun cbox-extract-text ()
+  "Discards comment delimiter tokens and boxing tokens"
+  (setq cbox-original-text "")
+  (let ((lines (split-string cbox-original-comment "\n")))
+    (setq lines (butlast (rest lines)))
+    (dolist (line lines)
+      (setq cbox-original-text
+	    (concat cbox-original-text (apply (function string) (butlast (nthcdr 3 (string-to-list line)) 2)) "\n")))))
+
+(defun cbox-insert-original-text ()
+  "Inserts cbox-original-text into the newly created temporary buffer"
+  (insert cbox-original-text))
+
+(defun cbox-delete-original-comment ()
+  "Deletes the original comment that was edited"
+  (goto-char (first cbox-original-comment-points))
+  (delete-char (- (second cbox-original-comment-points) (first cbox-original-comment-points))))
 
 ;;; cbox.el ends here
