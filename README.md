@@ -7,3 +7,22 @@ by calling the same function that created them:
 ```
 cbox-trigger
 ```
+
+## How to use cbox
+First of all, make sure that `cbox.el` is somewhere in your load path. As an example,
+I put elisp files in a `lisp/` folder in `~/.emacs.d/`, obviously make sure you create
+that directory with `mkdir ~/.emacs.d/lisp/` and make sure you put this in your `.emacs`
+```lisp
+;;; Add load path for lisp files
+(add-to-list 'load-path "~/.emacs.d/lisp/")
+```
+
+Now, you need to make sure you load it when needed so put this in your `.emacs`
+```lisp
+(autoload 'cbox-trigger "cbox" "Comment blocks editing" t)
+```
+
+You need to map cbox-trigger to something you like, I like to use `C-c /'
+```lisp
+(global-set-key (kbd "C-c /") 'cbox-trigger)
+```
