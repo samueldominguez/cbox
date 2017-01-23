@@ -30,6 +30,24 @@ You need to map cbox-trigger to something you like, I like to use `C-c /'
 ## How to use cbox
 
 Move the point (cursor) to where you want to put the comment block.
+
 ![image1](http://i.imgur.com/DPjjv1t.png)
+
 Now type whatever key binding you mapped to cbox-trigger. In the example above we used `C-c /`.
+
+![image2](http://i.imgur.com/x56c5xb.png)
+
 A buffer should have opened.
+
+![image3](http://i.imgur.com/JIYMCPF.png)
+
+Now type your comment and type `C-c C-c` that should insert the text as a comment in
+the original buffer.
+
+![image4](http://i.imgur.com/7enVqNN.png)
+
+## To finish
+***You can abort*** typing a comment by doing `C-c C-k` in the `cbox edit` buffer.
+***You can edit an existing comment*** by moving your point (cursor) on top of the
+comment and typing the same keybing you mapped to `cbox-trigger` note that the comment
+has to be in the same format that cbox uses to generate comments in order to edit it
