@@ -8,7 +8,7 @@ by calling the same function that created them:
 cbox-trigger
 ```
 
-## How to use cbox
+## How to install cbox
 First of all, make sure that `cbox.el` is somewhere in your load path. As an example,
 I put elisp files in a `lisp/` folder in `~/.emacs.d/`, obviously make sure you create
 that directory with `mkdir ~/.emacs.d/lisp/` and make sure you put this in your `.emacs`
@@ -26,3 +26,10 @@ You need to map cbox-trigger to something you like, I like to use `C-c /'
 ```lisp
 (global-set-key (kbd "C-c /") 'cbox-trigger)
 ```
+
+## How to use cbox
+
+Move the point (cursor) to where you want to put the comment block.
+![image1](http://imgur.com/DPjjv1t)
+Now type whatever key binding you mapped to cbox-trigger. In the example above we used `C-c /`.
+A buffer should have opened.
