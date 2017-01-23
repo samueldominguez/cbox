@@ -30,6 +30,6 @@ You need to map cbox-trigger to something you like, I like to use `C-c /'
 ## How to use cbox
 
 Move the point (cursor) to where you want to put the comment block.
-![image1](http://imgur.com/DPjjv1t)
+![image1](http://i.imgur.com/DPjjv1t.png)
 Now type whatever key binding you mapped to cbox-trigger. In the example above we used `C-c /`.
 A buffer should have opened.
