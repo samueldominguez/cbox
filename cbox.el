@@ -119,6 +119,69 @@ the original comment is defined in")
 (defvar cbox-original-text nil
   "Holds the processed text inside cbox-original-text")
 
+;; cbox-token-config should have the following format:
+;; (starting-token ending-token top-token corner-token side-token inner-box-margin text-margin)
+
+;; starting-token: the token that starts a comment, for example /* in C
+;; ending-token: the token that ends a comment, for example */ in C, if using
+;;               single line comments for the making of a box, this would be the
+;;               same as the starting token, so in the case of C++ you could
+;;               have // as starting-token and // as ending-token
+;; top-token: the token used for filling the top side and bottom side
+;;            of the box, for example a * or a =
+;; side-token: the token used for filling both sides of the box, this could
+;;             be anything, like a | or a *
+;; corner-token: the token used to fill top right and bottom left corners of the box,
+;;               for example in C, this is a * but for mono-character boxes you can use
+;;               the character that you used for top-token for example
+;; inner-box-margin: this is used to determine the offset of the sides of the
+;;                   box, for example when you have this box in C:
+;;
+;; /*==================================*
+;;  | This box has text from top to    |
+;;  | bottom, so no empty lines at the |
+;;  | top and bottom, and one space    |
+;;  | at the start of each line        |
+;;  *==================================*/
+;;
+;; The starting token is composed of two characters, that shifts the box to
+;; the right by one character, for comparison here is what it would look like
+;; if we were using a one character starting token:
+;;
+;; ###########################
+;; # Hello this is a comment #
+;; # inside a beautiful box! #
+;; ###########################
+;;
+;; The side is not shifted. In the first example, inner-box-margin would be 1,
+;; in this one, it would be 0
+;;
+;; text-margin: this is used to determine the margin of the text from the box
+;;              on the sides, so as an example first a 0 text-margin box will
+;;              be shown and then a 1 text-margin box will be shown
+;; 
+;; #########################
+;; #Hello this is a comment#
+;; #inside a beautiful box!#
+;; #########################
+;;
+;; ###########################
+;; # Hello this is a comment #
+;; # inside a beautiful box! #
+;; ###########################
+
+(defvar cbox-token-config nil
+  "Holds the tokens to use for box making")
+
+;; Token lists for different major-modes, adjust to liking or modify externally
+
+;; Emacs Lisp
+(defvar cbox-emacs-lisp-mode (list :starting-token ";;" :ending-token ";;" :top-token ";" :corner-token ";;" :side-token ";;" :inner-box-margin 0 :text-margin 1))
+;; C / C++ / Java / C#
+(defvar cbox-c-mode (list :starting-token "/*" :ending-token "*/" :top-token "=" :corner-token "*" :side-token "|" :inner-box-margin 1 :text-margin 1))
+;; R
+(defvar cbox-r-mode (list :starting-token "#" :ending-token "#" :top-token "#" :corner-token "#" :side-token "#" :inner-box-margin 0 :text-margin 1))
+
 (setq cbox-insert-marker (make-marker))
 (setq cbox-return-marker (make-marker))
 
@@ -136,6 +199,7 @@ form in the original buffer where cbox-trigger was initially invoked."
 	      (cbox-extract-comment)
 	      (cbox-extract-text))
 	  (setq cbox-editing-existing nil))
+	(cbox-set-token-config)
 	(setq cbox-source-buffer (current-buffer))
 	(split-window-right)
 	(other-window 1)
@@ -148,7 +212,7 @@ form in the original buffer where cbox-trigger was initially invoked."
 	    (cbox-insert-original-text)))
     (progn
       (setq cbox-comment-buffer-lines (split-string (buffer-string) "\n"))
-      (setq cbox-comment-buffer-max-line-length (+ 2 (cbox-determine-max-line)))
+      (setq cbox-comment-buffer-max-line-length (cbox-determine-max-line))
       (switch-to-buffer cbox-source-buffer)
       (when cbox-editing-existing
 	(cbox-delete-original-comment))
@@ -172,16 +236,20 @@ form in the original buffer where cbox-trigger was initially invoked."
 	(setq max (length el))))))
 
 (defun cbox-insert-comment ()
-  "Puts the cbox edit buffer contents into the original source buffer in
-comment format"
+  "Puts the cbox edit buffer contents into the original source buffer in the
+comment format corresponding with token-config"
   (unless cbox-editing-existing
     (goto-char cbox-insert-marker))
-  (insert (concat "/*" (make-string cbox-comment-buffer-max-line-length ?=) "*\n"))
-  (dolist (line cbox-comment-buffer-lines)
-    (progn
-      (when (eq line "") (setq line "\n"))
-      (insert (concat " | " line (make-string (- (- cbox-comment-buffer-max-line-length 2) (length line)) ? ) " |\n"))))
-  (insert (concat " *" (make-string cbox-comment-buffer-max-line-length ?=) "*/"))
+  (let ((top-left (getf cbox-token-config :starting-token)) (top-right (getf cbox-token-config :corner-token)) (lower-left (getf cbox-token-config :corner-token)) (lower-right (getf cbox-token-config :ending-token)) (top-bot (string-to-char (getf cbox-token-config :top-token))) (side (getf cbox-token-config :side-token)) (maxlength cbox-comment-buffer-max-line-length) (txtmargin (getf cbox-token-config :text-margin)) (boxmargin (getf cbox-token-config :inner-box-margin)))
+    ;; top line
+    (insert (concat top-left (make-string (+ maxlength (* txtmargin 2)) top-bot) top-right "\n"))
+    ;;intermediate lines
+    (dolist (line cbox-comment-buffer-lines)
+      (progn
+	(when (eq line "") (setq line "\n"))
+	(insert (concat (make-string boxmargin ? ) side (make-string txtmargin ? ) line (make-string (- maxlength (length line)) ? ) (make-string txtmargin ? ) side "\n"))))
+    ;; bottom line
+    (insert (concat (make-string boxmargin ? ) lower-left (make-string (+ maxlength (* txtmargin 2)) top-bot) lower-right)))
   (set-marker cbox-return-marker (point))
   (switch-to-buffer cbox-comment-buffer))
 
@@ -235,5 +303,15 @@ it stores it in cbox-original-comment"
   "Deletes the original comment that was edited"
   (goto-char (first cbox-original-comment-points))
   (delete-char (- (second cbox-original-comment-points) (first cbox-original-comment-points))))
+
+(defun cbox-set-token-config ()
+  "Sets cbox-token-config depending on major-mode"
+  major-mode
+  (if (eq major-mode 'emacs-lisp-mode)
+      (setq cbox-token-config cbox-emacs-lisp-mode)
+    (if (eq major-mode 'ess-mode)
+	(setq cbox-token-config cbox-r-mode)
+      ;; else just put c-mode as default
+      (setq cbox-token-config cbox-c-mode))))
 
 ;;; cbox.el ends here
