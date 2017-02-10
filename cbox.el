@@ -80,6 +80,8 @@
 
 ;;; Code:
 
+(require 'subr-x)
+
 (defconst cbox-comment-buffer-name " cbox edit "
   "Name given to the buffer used to write the comments")
 
