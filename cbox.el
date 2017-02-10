@@ -345,7 +345,6 @@ of the characters comprising the box are the same character (e.g. lisp comments)
 
 (defun cbox-set-token-config ()
   "Sets cbox-token-config depending on major-mode"
-  major-mode
   (if (eq major-mode 'emacs-lisp-mode)
       (setq cbox-token-config cbox-emacs-lisp-mode)
     (if (eq major-mode 'ess-mode)
