@@ -143,6 +143,8 @@ the original comment is defined in")
 ;;  | top and bottom, and one space    |
 ;;  | at the start of each line        |
 ;;  *==================================*/
+;; 
+;; NOTE all of the lines are shifted but the first!
 ;;
 ;; The starting token is composed of two characters, that shifts the box to
 ;; the right by one character, for comparison here is what it would look like
@@ -169,6 +171,11 @@ the original comment is defined in")
 ;; # Hello this is a comment #
 ;; # inside a beautiful box! #
 ;; ###########################
+;; 
+;; mono: this is used to determine if the box uses the same character all over
+;;       or if it uses different ones. C like boxing is nil, others like Lisp
+;;       are t for example
+;; 
 
 (defvar cbox-token-config nil
   "Holds the tokens to use for box making")
@@ -176,11 +183,11 @@ the original comment is defined in")
 ;; Token lists for different major-modes, adjust to liking or modify externally
 
 ;; Emacs Lisp
-(defvar cbox-emacs-lisp-mode (list :starting-token ";;" :ending-token ";;" :top-token ";" :corner-token ";;" :side-token ";;" :inner-box-margin 0 :text-margin 1))
+(defvar cbox-emacs-lisp-mode (list :starting-token ";;" :ending-token ";;" :top-token ";" :corner-token ";;" :side-token ";;" :inner-box-margin 0 :text-margin 1 :mono t))
 ;; C / C++ / Java / C#
-(defvar cbox-c-mode (list :starting-token "/*" :ending-token "*/" :top-token "=" :corner-token "*" :side-token "|" :inner-box-margin 1 :text-margin 1))
+(defvar cbox-c-mode (list :starting-token "/*" :ending-token "*/" :top-token "=" :corner-token "*" :side-token "|" :inner-box-margin 1 :text-margin 1 :mono nil))
 ;; R
-(defvar cbox-r-mode (list :starting-token "#" :ending-token "#" :top-token "#" :corner-token "#" :side-token "#" :inner-box-margin 0 :text-margin 1))
+(defvar cbox-r-mode (list :starting-token "#" :ending-token "#" :top-token "#" :corner-token "#" :side-token "#" :inner-box-margin 0 :text-margin 1 :mono t))
 
 (setq cbox-insert-marker (make-marker))
 (setq cbox-return-marker (make-marker))
@@ -192,14 +199,16 @@ form in the original buffer where cbox-trigger was initially invoked."
   (interactive)
   (if (eq (buffer-live-p cbox-comment-buffer) nil)
       (progn
+	(cbox-set-token-config)
 	(set-marker cbox-insert-marker (point))
 	(if (cbox-is-on-comment)
 	    (progn
 	      (setq cbox-editing-existing t)
-	      (cbox-extract-comment)
-	      (cbox-extract-text))
+	      (if (getf cbox-token-config :mono)
+		  (cbox-extract-comment-mono)
+		(cbox-extract-comment))
+		(cbox-extract-text))
 	  (setq cbox-editing-existing nil))
-	(cbox-set-token-config)
 	(setq cbox-source-buffer (current-buffer))
 	(split-window-right)
 	(other-window 1)
@@ -261,13 +270,15 @@ later extract the text and redo the comment"
       (memq (get-text-property (point) 'face)
 	    '(font-lock-comment-face font-lock-comment-delimiter-face))))
 
+;; This works only for configurations where the starting token, side token and ending
+;; token are all different from each other, like in C for example (see the C token config)
 (defun cbox-extract-comment ()
   "Scans area around point to copy the entire comment that the point is on,
 it stores it in cbox-original-comment"
   (let (line (start -1) (end -1))
     (loop do
 	  (setq line (thing-at-point 'line t))
-	  (when (string-match-p (regexp-quote "/*") line)
+	  (when (string-match-p (regexp-quote (getf cbox-token-config :starting-token)) line)
 	    (progn
 	      (beginning-of-line)
 	      (setq start (point))
@@ -276,8 +287,35 @@ it stores it in cbox-original-comment"
     (goto-char cbox-insert-marker)
     (loop do
 	  (setq line (thing-at-point 'line t))
-	  (when (string-match-p (regexp-quote "*/") line)
+	  (when (string-match-p (regexp-quote (getf cbox-token-config :ending-token)) line)
 	    (progn
+	      (end-of-line)
+	      (setq end (point))
+	      (return)))
+	  while (= 0 (forward-line 1)))
+    (goto-char cbox-insert-marker)
+    (setq cbox-original-comment (buffer-substring-no-properties start end))
+    (setq cbox-original-comment-points (list start end))))
+
+(defun cbox-extract-comment-mono ()
+  "Does the same as cbox-extract-comment but for comment types where all (or most?)
+of the characters comprising the box are the same character (e.g. lisp comments)"
+  (let (line (start -1) (end -1))
+    (loop do
+	  (setq line (thing-at-point 'line t))
+	  (unless (cbox-is-on-comment)
+	    (progn
+	      (forward-line 1)
+	      (beginning-of-line)
+	      (setq start (point))
+	      (return)))
+	  while (= 0 (forward-line -1)))
+    (goto-char cbox-insert-marker)
+    (loop do
+	  (setq line (thing-at-point 'line t))
+	  (unless (cbox-is-on-comment)
+	    (progn
+	      (forward-line -1)
 	      (end-of-line)
 	      (setq end (point))
 	      (return)))
@@ -289,11 +327,12 @@ it stores it in cbox-original-comment"
 (defun cbox-extract-text ()
   "Discards comment delimiter tokens and boxing tokens"
   (setq cbox-original-text "")
-  (let ((lines (split-string cbox-original-comment "\n")))
-    (setq lines (butlast (rest lines)))
-    (dolist (line lines)
-      (setq cbox-original-text
-	    (concat cbox-original-text (apply (function string) (butlast (nthcdr 3 (string-to-list line)) 2)) "\n")))))
+  (let ((lines (split-string cbox-original-comment "\n")) (left-discard (+ (getf cbox-token-config :inner-box-margin) (length (getf cbox-token-config :side-token)) (getf cbox-token-config :text-margin)))
+	(right-discard (+ (getf cbox-token-config :text-margin) (length (getf cbox-token-config :side-token)))))
+    (setq lines (butlast (rest lines)))     ;; top and bottom lines get eliminated
+    (loop for line in lines for i from 0 do
+	  (setq cbox-original-text
+	    (concat cbox-original-text (string-trim-right (apply (function string) (butlast (nthcdr left-discard (string-to-list line)) right-discard))) (if (= (- (length lines) 1) i) "" "\n"))))))
 
 (defun cbox-insert-original-text ()
   "Inserts cbox-original-text into the newly created temporary buffer"
