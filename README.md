@@ -1,4 +1,7 @@
 # cbox - comment blocks in boxes
+
+*cbox now supports Emacs Lisp, C like languages and R. It can easily be adapted for any language. Currently the source code can be modified slightly to support your favorite language, however soon you can do this directly from your .emacs for practical reasons*
+
 cbox allows the user to type in long comments explaining programs, putting in licenses
 and describing large sections of source code. It does so by opening up a temporary buffer
 for editing. Once finished the comment is inserted and boxed around for pretty
