@@ -206,7 +206,7 @@ form in the original buffer where cbox-trigger was initially invoked."
 	(if (cbox-is-on-comment)
 	    (progn
 	      (setq cbox-editing-existing t)
-	      (if (getf cbox-token-config :mono)
+	      (if (plist-get cbox-token-config :mono)
 		  (cbox-extract-comment-mono)
 		(cbox-extract-comment))
 		(cbox-extract-text))
@@ -251,7 +251,7 @@ form in the original buffer where cbox-trigger was initially invoked."
 comment format corresponding with token-config"
   (unless cbox-editing-existing
     (goto-char cbox-insert-marker))
-  (let ((top-left (getf cbox-token-config :starting-token)) (top-right (getf cbox-token-config :corner-token)) (lower-left (getf cbox-token-config :corner-token)) (lower-right (getf cbox-token-config :ending-token)) (top-bot (string-to-char (getf cbox-token-config :top-token))) (side (getf cbox-token-config :side-token)) (maxlength cbox-comment-buffer-max-line-length) (txtmargin (getf cbox-token-config :text-margin)) (boxmargin (getf cbox-token-config :inner-box-margin)))
+  (let ((top-left (plist-get cbox-token-config :starting-token)) (top-right (plist-get cbox-token-config :corner-token)) (lower-left (plist-get cbox-token-config :corner-token)) (lower-right (plist-get cbox-token-config :ending-token)) (top-bot (string-to-char (plist-get cbox-token-config :top-token))) (side (plist-get cbox-token-config :side-token)) (maxlength cbox-comment-buffer-max-line-length) (txtmargin (plist-get cbox-token-config :text-margin)) (boxmargin (plist-get cbox-token-config :inner-box-margin)))
     ;; top line
     (insert (concat top-left (make-string (+ maxlength (* txtmargin 2)) top-bot) top-right "\n"))
     ;;intermediate lines
@@ -280,7 +280,7 @@ it stores it in cbox-original-comment"
   (let (line (start -1) (end -1))
     (loop do
 	  (setq line (thing-at-point 'line t))
-	  (when (string-match-p (regexp-quote (getf cbox-token-config :starting-token)) line)
+	  (when (string-match-p (regexp-quote (plist-get cbox-token-config :starting-token)) line)
 	    (progn
 	      (beginning-of-line)
 	      (setq start (point))
@@ -289,7 +289,7 @@ it stores it in cbox-original-comment"
     (goto-char cbox-insert-marker)
     (loop do
 	  (setq line (thing-at-point 'line t))
-	  (when (string-match-p (regexp-quote (getf cbox-token-config :ending-token)) line)
+	  (when (string-match-p (regexp-quote (plist-get cbox-token-config :ending-token)) line)
 	    (progn
 	      (end-of-line)
 	      (setq end (point))
@@ -329,8 +329,8 @@ of the characters comprising the box are the same character (e.g. lisp comments)
 (defun cbox-extract-text ()
   "Discards comment delimiter tokens and boxing tokens"
   (setq cbox-original-text "")
-  (let ((lines (split-string cbox-original-comment "\n")) (left-discard (+ (getf cbox-token-config :inner-box-margin) (length (getf cbox-token-config :side-token)) (getf cbox-token-config :text-margin)))
-	(right-discard (+ (getf cbox-token-config :text-margin) (length (getf cbox-token-config :side-token)))))
+  (let ((lines (split-string cbox-original-comment "\n")) (left-discard (+ (plist-get cbox-token-config :inner-box-margin) (length (plist-get cbox-token-config :side-token)) (plist-get cbox-token-config :text-margin)))
+	(right-discard (+ (plist-get cbox-token-config :text-margin) (length (plist-get cbox-token-config :side-token)))))
     (setq lines (butlast (rest lines)))     ;; top and bottom lines get eliminated
     (loop for line in lines for i from 0 do
 	  (setq cbox-original-text
