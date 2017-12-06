@@ -81,6 +81,7 @@
 ;;; Code:
 
 (require 'subr-x)
+(require 'cl-lib)
 
 (defconst cbox-comment-buffer-name " cbox edit "
   "Name given to the buffer used to write the comments")
@@ -278,22 +279,22 @@ later extract the text and redo the comment"
   "Scans area around point to copy the entire comment that the point is on,
 it stores it in cbox-original-comment"
   (let (line (start -1) (end -1))
-    (loop do
+    (cl-loop do
 	  (setq line (thing-at-point 'line t))
 	  (when (string-match-p (regexp-quote (plist-get cbox-token-config :starting-token)) line)
 	    (progn
 	      (beginning-of-line)
 	      (setq start (point))
-	      (return)))
+	      (cl-return)))
 	  while (= 0 (forward-line -1)))
     (goto-char cbox-insert-marker)
-    (loop do
+    (cl-loop do
 	  (setq line (thing-at-point 'line t))
 	  (when (string-match-p (regexp-quote (plist-get cbox-token-config :ending-token)) line)
 	    (progn
 	      (end-of-line)
 	      (setq end (point))
-	      (return)))
+	      (cl-return)))
 	  while (= 0 (forward-line 1)))
     (goto-char cbox-insert-marker)
     (setq cbox-original-comment (buffer-substring-no-properties start end))
@@ -303,24 +304,24 @@ it stores it in cbox-original-comment"
   "Does the same as cbox-extract-comment but for comment types where all (or most?)
 of the characters comprising the box are the same character (e.g. lisp comments)"
   (let (line (start -1) (end -1))
-    (loop do
+    (cl-loop do
 	  (setq line (thing-at-point 'line t))
 	  (unless (cbox-is-on-comment)
 	    (progn
 	      (forward-line 1)
 	      (beginning-of-line)
 	      (setq start (point))
-	      (return)))
+	      (cl-return)))
 	  while (= 0 (forward-line -1)))
     (goto-char cbox-insert-marker)
-    (loop do
+    (cl-loop do
 	  (setq line (thing-at-point 'line t))
 	  (unless (cbox-is-on-comment)
 	    (progn
 	      (forward-line -1)
 	      (end-of-line)
 	      (setq end (point))
-	      (return)))
+	      (cl-return)))
 	  while (= 0 (forward-line 1)))
     (goto-char cbox-insert-marker)
     (setq cbox-original-comment (buffer-substring-no-properties start end))
@@ -331,10 +332,10 @@ of the characters comprising the box are the same character (e.g. lisp comments)
   (setq cbox-original-text "")
   (let ((lines (split-string cbox-original-comment "\n")) (left-discard (+ (plist-get cbox-token-config :inner-box-margin) (length (plist-get cbox-token-config :side-token)) (plist-get cbox-token-config :text-margin)))
 	(right-discard (+ (plist-get cbox-token-config :text-margin) (length (plist-get cbox-token-config :side-token)))))
-    (setq lines (butlast (rest lines)))     ;; top and bottom lines get eliminated
-    (loop for line in lines for i from 0 do
-	  (setq cbox-original-text
-	    (concat cbox-original-text (string-trim-right (apply (function string) (butlast (nthcdr left-discard (string-to-list line)) right-discard))) (if (= (- (length lines) 1) i) "" "\n"))))))
+    (setq lines (butlast (cl-rest lines)))     ;; top and bottom lines get eliminated
+    (cl-loop for line in lines for i from 0 do
+	     (setq cbox-original-text
+		   (concat cbox-original-text (string-trim-right (apply (function string) (butlast (nthcdr left-discard (string-to-list line)) right-discard))) (if (= (- (length lines) 1) i) "" "\n"))))))
 
 (defun cbox-insert-original-text ()
   "Inserts cbox-original-text into the newly created temporary buffer"
@@ -342,8 +343,8 @@ of the characters comprising the box are the same character (e.g. lisp comments)
 
 (defun cbox-delete-original-comment ()
   "Deletes the original comment that was edited"
-  (goto-char (first cbox-original-comment-points))
-  (delete-char (- (second cbox-original-comment-points) (first cbox-original-comment-points))))
+  (goto-char (cl-first cbox-original-comment-points))
+  (delete-char (- (cl-second cbox-original-comment-points) (cl-first cbox-original-comment-points))))
 
 (defun cbox-set-token-config ()
   "Sets cbox-token-config depending on major-mode"
