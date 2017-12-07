@@ -122,6 +122,9 @@ the original comment is defined in")
 (defvar cbox-original-text nil
   "Holds the processed text inside cbox-original-text")
 
+(defvar cbox-do-remove nil
+  "Holds nil or t, if t, then the comment is removed. See cbox-remove")
+
 ;; cbox-token-config should have the following format:
 ;; (starting-token ending-token top-token corner-token side-token inner-box-margin text-margin)
 
@@ -220,6 +223,7 @@ form in the original buffer where cbox-trigger was initially invoked."
 	(auto-fill-mode)
 	(local-set-key "\C-c\C-c" 'cbox-trigger)
 	(local-set-key "\C-c\C-k" 'cbox-abort)
+	(local-set-key "\C-C\C-d" 'cbox-remove)
 	(when cbox-editing-existing
 	    (cbox-insert-original-text)))
     (progn
@@ -228,7 +232,9 @@ form in the original buffer where cbox-trigger was initially invoked."
       (switch-to-buffer cbox-source-buffer)
       (when cbox-editing-existing
 	(cbox-delete-original-comment))
-      (cbox-insert-comment)
+      (unless cbox-do-remove
+	(cbox-insert-comment))
+      (setq cbox-do-remove nil)
       (kill-buffer cbox-comment-buffer)
       (delete-window)
       (goto-char cbox-return-marker)
@@ -239,6 +245,13 @@ form in the original buffer where cbox-trigger was initially invoked."
   (interactive)
   (kill-buffer cbox-comment-buffer)
   (delete-window))
+
+(defun cbox-remove ()
+  "Invoked by C-c C-d, buffer local. Removes the comment entirely."
+  (interactive)
+  (setq cbox-do-remove t)
+  (cbox-trigger))
+  
 
 (defun cbox-determine-max-line ()
   "Sets cbox-comment-buffer-max-line-length to the longest line in cbox-comment-buffer"
