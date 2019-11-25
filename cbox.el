@@ -223,7 +223,7 @@ form in the original buffer where cbox-trigger was initially invoked."
 	(auto-fill-mode)
 	(local-set-key "\C-c\C-c" 'cbox-trigger)
 	(local-set-key "\C-c\C-k" 'cbox-abort)
-	(local-set-key "\C-C\C-d" 'cbox-remove)
+	(local-set-key "\C-c\C-d" 'cbox-remove)
 	(when cbox-editing-existing
 	    (cbox-insert-original-text)))
     (progn
